@@ -1,9 +1,10 @@
 # Coventry rate watch
-Checks Coventry BS's first-time-buyer page daily and emails a status update
-every run for the 2-year (£999 fee, 85% LTV) fixed rate. The subject line
-flags it clearly when the rate has DROPPED. Emailing every run (rather than
-only on a drop) is deliberate: a missing email is itself a signal that the
-job failed, instead of silently trusting "no news = no change."
+Checks Coventry BS's first-time-buyer page twice a day (morning + end of day)
+and emails a status update every run for the 2-year (£999 fee, 85% LTV) fixed
+rate. The subject line flags it clearly when the rate has DROPPED. Emailing
+every run (rather than only on a drop) is deliberate: a missing email is
+itself a signal that the job failed, instead of silently trusting "no news =
+no change."
 
 ## Setup
 
@@ -41,13 +42,13 @@ job failed, instead of silently trusting "no news = no change."
 - The workflow commits an updated `rate_state.json` back to the repo after each run if the rate changed.
 
 ## Schedule
-- Runs once daily: 08:00 UTC (~09:00 BST).
+- Runs twice daily: 08:00 and 20:00 UTC (~09:00 and 21:00 BST — morning and end of day).
 - Can also be triggered manually any time via **Actions → Run workflow**.
 - GitHub cron is "best effort" and can be delayed under load, and GitHub auto-disables
   scheduled workflows after 60 days of repo inactivity (any push/commit resets that clock).
 
 ## Notes
-- Personal use, one email per day regardless of outcome — the subject line says
+- Personal use, two emails per day regardless of outcome — the subject line says
   "DROPPED" only when the rate has actually fallen, so it's easy to filter/skim for.
 - Watches by fee + LTV, so it survives Coventry retiring/changing the product code.
 - It's a backstop that tells me *when* to act — the broker actually requests any reissue.
