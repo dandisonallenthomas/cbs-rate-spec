@@ -1,6 +1,9 @@
 # Coventry rate watch
-Checks Coventry BS's first-time-buyer page twice daily and emails me if the
-2-year (£999 fee, 85% LTV) fixed rate drops below the last seen rate.
+Checks Coventry BS's first-time-buyer page daily and emails a status update
+every run for the 2-year (£999 fee, 85% LTV) fixed rate. The subject line
+flags it clearly when the rate has DROPPED. Emailing every run (rather than
+only on a drop) is deliberate: a missing email is itself a signal that the
+job failed, instead of silently trusting "no news = no change."
 
 ## Setup
 
@@ -25,11 +28,11 @@ Checks Coventry BS's first-time-buyer page twice daily and emails me if the
 
 **4. Test it**
 - Actions tab → **Coventry rate watch** → **Run workflow** (manual trigger).
-- Check the run log for errors.
-- To confirm email delivery actually works, either:
-  - Temporarily lower the baseline in `rate_state.json` (e.g. `4.44` → `4.50`) and re-run, which should trigger a "rate DROPPED" email, or
-  - Run locally with `python coventry_rate_watch.py --report` (with `SMTP_USER`/`SMTP_PASS`/`TO_EMAIL` set as env vars) to force a status email immediately.
-- Revert any manual edit to `rate_state.json` once the test email arrives.
+- Check the run log for errors — every successful run sends an email, so this alone
+  confirms delivery works.
+- To specifically confirm the "DROPPED" subject line works, temporarily lower the
+  baseline in `rate_state.json` (e.g. `4.44` → `4.50`) and re-run, then revert it
+  once the test email arrives.
 
 ## Baseline
 - `rate_state.json` is seeded at `4.44` under the key `"2yr|999|85"`.
@@ -37,11 +40,15 @@ Checks Coventry BS's first-time-buyer page twice daily and emails me if the
 - The workflow commits an updated `rate_state.json` back to the repo after each run if the rate changed.
 
 ## Schedule
-- Runs twice daily: 08:00 and 17:00 UTC (~09:00 and 18:00 BST).
+- Runs once daily: 08:00 UTC (~09:00 BST).
 - Can also be triggered manually any time via **Actions → Run workflow**.
+- GitHub cron is "best effort" and can be delayed under load, and GitHub auto-disables
+  scheduled workflows after 60 days of repo inactivity (any push/commit resets that clock).
 
 ## Notes
-- Personal use, twice daily. Watches by fee + LTV, so survives product-code changes.
+- Personal use, one email per day regardless of outcome — the subject line says
+  "DROPPED" only when the rate has actually fallen, so it's easy to filter/skim for.
+- Watches by fee + LTV, so it survives Coventry retiring/changing the product code.
 - It's a backstop that tells me *when* to act — the broker actually requests any reissue.
 
 ## Known caveats / failure modes

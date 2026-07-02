@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Coventry BS first-time-buyer rate watcher. Emails on a rate DROP.
+"""Coventry BS first-time-buyer rate watcher. Emails a daily status update;
+subject line flags it when the rate has DROPPED.
 
 Usage:
-  python coventry_rate_watch.py            # check + alert on drop (used by CI)
+  python coventry_rate_watch.py            # check + send status email (used by CI)
   python coventry_rate_watch.py --debug    # print all parsed products, no email
-  python coventry_rate_watch.py --report   # email the current target rate now
 """
 import os
 import re
@@ -88,7 +88,6 @@ def describe(grp):
 
 def run():
     debug = "--debug" in sys.argv
-    report = "--report" in sys.argv
 
     products = fetch_products()
     if debug:
@@ -108,22 +107,26 @@ def run():
     now = two_year["rate"]
     state = load_state()
     prev = state.get(STATE_KEY)
+    listing = describe(grp)
 
-    if report:
-        send_email(f"Coventry rate today: {now:.2f}%",
-                   "Current £999 / 85% LTV products:\n" + describe(grp) + f"\n\n{URL}")
-
+    # Always send a status email — a missing email is itself a signal the job failed,
+    # rather than relying on silence-means-no-change.
     if prev is None:
-        print(f"Baseline set at {now:.2f}%.")
+        subject = f"Coventry rate watch: baseline set at {now:.2f}%"
+        body = f"No previous baseline found — recording {now:.2f}% as the starting point.\n\n{listing}\n\n{URL}"
     elif now < prev:
-        send_email(f"Coventry rate DROPPED to {now:.2f}% (was {prev:.2f}%)",
-                   f"The 2-year fix (£999 fee, 85% LTV) dropped from {prev:.2f}% to {now:.2f}%.\n\n"
-                   f"All matching products today:\n{describe(grp)}\n\n"
-                   f"If within ~2-3 weeks of completion, ask Josephine about reissuing at the lower rate.\n\n{URL}")
+        subject = f"Coventry rate DROPPED to {now:.2f}% (was {prev:.2f}%)"
+        body = (f"The 2-year fix (£999 fee, 85% LTV) dropped from {prev:.2f}% to {now:.2f}%.\n\n"
+                f"All matching products today:\n{listing}\n\n"
+                f"If within ~2-3 weeks of completion, ask Josephine about reissuing at the lower rate.\n\n{URL}")
     elif now > prev:
-        print(f"Rate rose {prev:.2f}% -> {now:.2f}% (no alert).")
+        subject = f"Coventry rate watch: rose to {now:.2f}% (was {prev:.2f}%)"
+        body = f"No action needed — rate rose from {prev:.2f}% to {now:.2f}%.\n\n{listing}\n\n{URL}"
     else:
-        print(f"No change ({now:.2f}%).")
+        subject = f"Coventry rate watch: no change ({now:.2f}%)"
+        body = f"Still {now:.2f}%, no change since last check.\n\n{listing}\n\n{URL}"
+
+    send_email(subject, body)
 
     state[STATE_KEY] = now
     save_state(state)
