@@ -21,13 +21,14 @@ job failed, instead of silently trusting "no news = no change."
   - `SMTP_PASS` — the 16-character App Password from step 1.
   - `TO_EMAIL` — where alerts should land (can be the same Gmail address).
 
-**3. Enable GitHub Actions**
+**3. Confirm the workflow is registered**
 - Open the **Actions** tab on the repo.
-- If prompted, click to enable workflows for this repository.
-- Confirm the workflow `Coventry rate watch` appears in the left sidebar.
+- `Coventry rate watch` should already appear in the left sidebar — Actions is on by
+  default for your own repos (only forks require manually enabling it).
 
 **4. Test it**
-- Actions tab → **Coventry rate watch** → **Run workflow** (manual trigger).
+- Actions tab → **Coventry rate watch** → **Run workflow** button (top right of the
+  runs list) → manual trigger.
 - Check the run log for errors — every successful run sends an email, so this alone
   confirms delivery works.
 - To specifically confirm the "DROPPED" subject line works, temporarily lower the
