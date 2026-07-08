@@ -2,7 +2,7 @@ name: Coventry rate watch
 
 on:
   schedule:
-    - cron: '0 8,20 * * *'   # 08:00 & 20:00 UTC daily (~09:00 & 21:00 BST) — morning + end of day
+    - cron: '0 8 * * *'   # 08:00 UTC daily (~09:00 BST)
   workflow_dispatch:      # manual "Run workflow" button in the Actions tab
 
 permissions:
