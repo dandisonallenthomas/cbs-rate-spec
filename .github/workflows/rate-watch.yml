@@ -21,10 +21,6 @@ jobs:
       - run: pip install -r requirements.txt
 
       - name: Run rate watcher
-        env:
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
-          TO_EMAIL:  ${{ secrets.TO_EMAIL }}
         run: python coventry_rate_watch.py
 
       - name: Persist state if changed

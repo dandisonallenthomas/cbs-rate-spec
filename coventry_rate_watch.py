@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
-"""Coventry BS first-time-buyer rate watcher. Emails a daily status update;
-subject line flags it when the rate has DROPPED.
+"""Coventry BS first-time-buyer rate watcher. Checks rates and persists state.
 
 Usage:
-  python coventry_rate_watch.py            # check + send status email (used by CI)
-  python coventry_rate_watch.py --debug    # print all parsed products, no email
+  python coventry_rate_watch.py            # check + update state (used by CI)
+  python coventry_rate_watch.py --debug    # print all parsed products, no state update
 """
 import os
 import re
 import sys
 import json
-import smtplib
 import datetime as dt
-from email.message import EmailMessage
 
 import requests
 from bs4 import BeautifulSoup
@@ -65,20 +62,6 @@ def save_state(state):
         json.dump(state, f, indent=2)
 
 
-def send_email(subject, body):
-    user, pw, to = os.environ.get("SMTP_USER"), os.environ.get("SMTP_PASS"), os.environ.get("TO_EMAIL")
-    if not all([user, pw, to]):
-        print("!! Email creds missing; would have sent:\n", subject, "\n", body)
-        return
-    msg = EmailMessage()
-    msg["Subject"], msg["From"], msg["To"] = subject, user, to
-    msg.set_content(body)
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
-        s.login(user, pw)
-        s.send_message(msg)
-    print(f"Email sent: {subject}")
-
-
 def describe(grp):
     return "\n".join(
         f"  {p['rate']:.2f}%  fixed to {p['end_date']}  (£{p['fee']} fee, {p['ltv']}% LTV)"
@@ -98,47 +81,29 @@ def run():
 
     grp = target_group(products)
     if not grp:
-        send_email("Coventry rate watch: target product NOT FOUND",
-                   "No £999 / 85% LTV fixed product on the page today — Coventry may have "
-                   f"changed product codes. Check manually:\n{URL}")
+        print("Target product NOT FOUND — Coventry may have changed product codes.")
         return
 
     two_year = grp[0]
     now = two_year["rate"]
     state = load_state()
     prev = state.get(STATE_KEY)
-    listing = describe(grp)
 
-    # Always send a status email — a missing email is itself a signal the job failed,
-    # rather than relying on silence-means-no-change.
     if prev is None:
-        subject = f"Coventry rate watch: baseline set at {now:.2f}%"
-        body = f"No previous baseline found — recording {now:.2f}% as the starting point.\n\n{listing}\n\n{URL}"
+        print(f"Baseline set at {now:.2f}%.")
     elif now < prev:
-        subject = f"Coventry rate DROPPED to {now:.2f}% (was {prev:.2f}%)"
-        body = (f"The 2-year fix (£999 fee, 85% LTV) dropped from {prev:.2f}% to {now:.2f}%.\n\n"
-                f"All matching products today:\n{listing}\n\n"
-                f"If within ~2-3 weeks of completion, ask Josephine about reissuing at the lower rate.\n\n{URL}")
+        print(f"Rate DROPPED to {now:.2f}% (was {prev:.2f}%)")
     elif now > prev:
-        subject = f"Coventry rate watch: rose to {now:.2f}% (was {prev:.2f}%)"
-        body = f"No action needed — rate rose from {prev:.2f}% to {now:.2f}%.\n\n{listing}\n\n{URL}"
+        print(f"Rate rose {prev:.2f}% -> {now:.2f}%")
     else:
-        subject = f"Coventry rate watch: no change ({now:.2f}%)"
-        body = f"Still {now:.2f}%, no change since last check.\n\n{listing}\n\n{URL}"
-
-    send_email(subject, body)
+        print(f"No change ({now:.2f}%).")
 
     state[STATE_KEY] = now
     save_state(state)
 
 
 def main():
-    try:
-        run()
-    except Exception as e:
-        # Fail loud: notify, then re-raise so the Actions run is marked failed.
-        send_email("Coventry rate watch ERROR", f"The watcher hit an error:\n\n{e!r}\n\nCheck the run: {URL}")
-        raise
+    run()
 
 
 if __name__ == "__main__":
